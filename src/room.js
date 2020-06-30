@@ -2,7 +2,7 @@
 * @Author: Robert D. Cotey II <coteyr@coteyr.net>
 * @Date:   2020-06-29 13:24:02
 * @Last Modified by:   Robert D. Cotey II <coteyr@coteyr.net>
-* @Last Modified time: 2020-06-30 00:27:03
+* @Last Modified time: 2020-06-30 02:02:32
 */
 
 
@@ -52,9 +52,11 @@ Room.prototype.map = function() {
     rv.text('\u{1F6A7}', target)
   })
   _.forEach(this.memory.map.towers, function(tower){
-    rv.text('\u{1f5fc}', tower)
+    if(tower) rv.text('\u{1f5fc}', tower)
   })
-  rv.text('\u{1f6e2}', this.memory.map.storage[0])
+  _.forEach(this.memory.map.storage, function(storage){
+    if(storage) rv.text('\u{1f6e2}', storage)
+  })
 }
 
 Room.prototype.generate_map = function() {
@@ -106,8 +108,9 @@ Room.prototype.need_booters = function() {
 
 Room.prototype.map_storage = function() {
   let room = this
-  if(this.memory.map.storage && this.memory.map.storage.length > 0 ) return false
+  if(this.memory.map.storage && this.memory.map.storage.length > 0) return false
 
+  console.log('doing it')
   let locations = this.memory.map.construction_targets
   let choices = _.filter(locations, function(l) { return (new RoomPosition(l.x, l.y, room.name).inRangeTo(room.find(FIND_MY_SPAWNS)[0].pos, 5)) })
   choices = _.sortBy(choices, function(c) { return (new RoomPosition(c.x, c.y, room.name).getRangeTo(room.controller.pos)) })
@@ -122,18 +125,18 @@ Room.prototype.map_storage = function() {
 }
 
 Room.prototype.spawns = function() {
-  return room.find(FIND_MY_SPAWNS)
+  return this.find(FIND_MY_SPAWNS)
 }
 
 Room.prototype.map_towers = function() {
   let room = this
-  if(this.memory.map.towers && this.memory.map.towers.length > 0 ) return false
+  if(this.memory.map.towers && this.memory.map.towers.length > 0) return false
 
   locations = this.memory.map.construction_targets
   level1 = _.find(locations, function(s){ return Range.within_range(room.spawns(), new RoomPosition(s.x, s.y, room.name), 1, 3) })
-  _.remove(locations, function(l) { return l.x == level1.x && l.y == level1.y})
+  if(level1) _.remove(locations, function(l) { return l.x == level1.x && l.y == level1.y})
   level2 = _.find(locations, function(s){ return Range.within_range(room.spawns(), new RoomPosition(s.x, s.y, room.name), 2, 5) })
-  _.remove(locations, function(l) { return l.x == level2.x && l.y == level2.y})
+  if(level2) _.remove(locations, function(l) { return l.x == level2.x && l.y == level2.y})
   bigx = _.last(_.sortBy(locations, function(l) { return l.x }))
   smallx = _.first(_.sortBy(locations, function(l) { return l.x }))
   bigy = _.last(_.sortBy(locations, function(l) { return l.y }))
@@ -144,18 +147,15 @@ Room.prototype.map_towers = function() {
   bot_left = new RoomPosition(smallx.x, bigy.y, this.name)
   bot_right = new RoomPosition(bigx.x, bigy.y, this.name)
 
-  console.log(top_right.x + ', ' + top_right.y)
-  console.log(locations.length)
-  console.log(_.filter(locations, function(l) { return top_right.getRangeTo(l.x, l.y) <= 2 }).length)
 
   level3 = _.first(_.sortBy(locations, function(l) { return top_right.getRangeTo(l.x, l.y) }))
   level4 = _.first(_.sortBy(locations, function(l) { return bot_right.getRangeTo(l.x, l.y)  }))
   level5 = _.first(_.sortBy(locations, function(l) { return top_left.getRangeTo(l.x, l.y)  }))
   level6 = _.first(_.sortBy(locations, function(l) { return bot_left.getRangeTo(l.x, l.y) }))
-  _.remove(locations, function(l) { return l.x == level3.x && l.y == level3.y})
-  _.remove(locations, function(l) { return l.x == level4.x && l.y == level4.y})
-  _.remove(locations, function(l) { return l.x == level5.x && l.y == level5.y})
-  _.remove(locations, function(l) { return l.x == level6.x && l.y == level6.y})
+  if(level3) _.remove(locations, function(l) { return l.x == level3.x && l.y == level3.y})
+  if(level4) _.remove(locations, function(l) { return l.x == level4.x && l.y == level4.y})
+  if(level5) _.remove(locations, function(l) { return l.x == level5.x && l.y == level5.y})
+  if(level6) _.remove(locations, function(l) { return l.x == level6.x && l.y == level6.y})
 
   this.memory.map.towers = [level1, level2, level3, level4, level5, level6]
   this.memory.map.construction_targets = locations
@@ -183,17 +183,8 @@ Room.prototype.prune_construction_targets = function() {
 Room.prototype.map_construction_targets = function() {
   if(this.memory.map.construction_targets && this.memory.map.construction_targets.length > 0 ) return false
 
-  room = this
-  locations = []
-  sources = room.find(FIND_MY_SPAWNS)
-  _.forEach(sources, function(source){
-    spots = room.lookForAtArea(LOOK_TERRAIN, source.pos.y - 10, source.pos.x - 10, source.pos.y + 10, source.pos.x + 10, true)
-    _.forEach(spots, function(spot){
-      if(spot.type == 'terrain' && (spot.terrain == 'plain' || spot.terrain == 'swamp') && source.pos.getRangeTo(spot.x, spot.y) > 1 && ((spot.x % 2 == 0 && spot.y % 2 != 0) || (spot.x % 2 != 0 && spot.y % 2 == 0))) {
-        locations.push(new RoomPosition(spot.x, spot.y, room.name))
-      }
-    })
-  })
+  let sources = this.spawns()
+  let locations = Mapping.find_open_ground(sources, 10, true, 1)
   this.memory.map.construction_targets = locations
   this.prune_construction_targets()
 }
@@ -201,16 +192,7 @@ Room.prototype.map_construction_targets = function() {
 Room.prototype.map_mining_spots = function() {
   if(this.memory.map.mining_spots) return false
 
-  room = this
-  locations = []
-  sources = room.find(FIND_SOURCES)
-  _.forEach(sources, function(source){
-    spots = room.lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
-    _.forEach(spots, function(spot){
-      if(spot.type == 'terrain' && spot.terrain == 'plain') {
-        locations.push(new RoomPosition(spot.x, spot.y, room.name))
-      }
-    })
-  })
+  let sources = this.find(FIND_SOURCES)
+  let locations = Mapping.find_open_ground(sources, 1, false)
   this.memory.map.mining_spots = locations
 }
