@@ -2,7 +2,7 @@
 * @Author: Robert D. Cotey II <coteyr@coteyr.net>
 * @Date:   2020-06-29 13:24:02
 * @Last Modified by:   Robert D. Cotey II <coteyr@coteyr.net>
-* @Last Modified time: 2020-06-29 21:03:13
+* @Last Modified time: 2020-06-30 00:27:03
 */
 
 
@@ -121,14 +121,18 @@ Room.prototype.map_storage = function() {
 
 }
 
+Room.prototype.spawns = function() {
+  return room.find(FIND_MY_SPAWNS)
+}
+
 Room.prototype.map_towers = function() {
   let room = this
   if(this.memory.map.towers && this.memory.map.towers.length > 0 ) return false
 
   locations = this.memory.map.construction_targets
-  level1 = _.find(locations, function(s){ return room.find(FIND_MY_SPAWNS)[0].pos.getRangeTo(s.x, s.y) >= 1 &&  room.find(FIND_MY_SPAWNS)[0].pos.getRangeTo(s.x, s.y) <= 3 })
+  level1 = _.find(locations, function(s){ return Range.within_range(room.spawns(), new RoomPosition(s.x, s.y, room.name), 1, 3) })
   _.remove(locations, function(l) { return l.x == level1.x && l.y == level1.y})
-  level2 = _.find(locations, function(s){ return room.find(FIND_MY_SPAWNS)[0].pos.getRangeTo(s.x, s.y) >= 2 && room.find(FIND_MY_SPAWNS)[0].pos.getRangeTo(s.x, s.y) <= 5 })
+  level2 = _.find(locations, function(s){ return Range.within_range(room.spawns(), new RoomPosition(s.x, s.y, room.name), 2, 5) })
   _.remove(locations, function(l) { return l.x == level2.x && l.y == level2.y})
   bigx = _.last(_.sortBy(locations, function(l) { return l.x }))
   smallx = _.first(_.sortBy(locations, function(l) { return l.x }))
